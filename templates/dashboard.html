@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSX Trading Bot - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0a0e27; color: #e0e0e0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1a1a3e, #16213e); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d2ff33; flex-wrap: wrap; gap: 10px; }
+        .header h1 { color: #00d2ff; font-size: 22px; }
+        .header .meta { font-size: 13px; color: #888; }
+        .header .meta span { color: #00d2ff; font-weight: bold; }
+        .header .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        .header .actions button { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .source-toggle { display: flex; align-items: center; gap: 8px; color: #aaa; font-size: 13px; }
+        .source-toggle select { padding: 8px 10px; border: 1px solid #333; border-radius: 6px; background: #0f3460; color: #fff; font-size: 13px; }
+        .source-badge { color: #00d2ff; font-weight: bold; }
+        .tabs { display: flex; background: #12132b; border-bottom: 1px solid #222; overflow-x: auto; }
+        .tab { padding: 14px 28px; cursor: pointer; color: #888; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; font-size: 14px; }
+        .tab:hover { color: #ccc; }
+        .tab.active { color: #00d2ff; border-bottom-color: #00d2ff; }
+        .content { padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #16213e; padding: 16px; border-radius: 8px; border-left: 4px solid #00d2ff; }
+        .stat-card .label { font-size: 11px; color: #888; text-transform: uppercase; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: #fff; margin-top: 4px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #16213e; color: #00d2ff; padding: 12px 10px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #00d2ff33; white-space: nowrap; }
+        td { padding: 10px; border-bottom: 1px solid #1a1a3e; white-space: nowrap; }
+        tr:hover { background: #16213e44; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { color: #7be0ff; }
+        .sort-indicator { color: #7be0ff; font-size: 11px; margin-left: 4px; }
+        .signal { padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .signal-BUY { background: #00c851; color: #000; }
+        .signal-ACCUMULATE { background: #2ecc71; color: #041b0c; }
+        .signal-SELL { background: #ff4444; color: #fff; }
+        .signal-TAKE_PROFIT { background: #ff6f61; color: #fff; }
+        .signal-WATCH { background: #ffbb33; color: #000; }
+        .signal-HOLD { background: #555; color: #ccc; }
+        .signal-OVERBOUGHT { background: #ff8800; color: #000; }
+        .signal-STOP_LOSS { background: #cc0000; color: #fff; }
+        .signal-INSUFFICIENT_DATA { background: #333; color: #888; }
+        .prompt-box { background: #111; border: 1px solid #333; border-radius: 8px; padding: 16px; margin: 12px 0; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 12px; max-height: 500px; overflow-y: auto; color: #ccc; line-height: 1.5; }
+        .prompt-controls { display: flex; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; }
+        .btn-primary { background: #00d2ff; color: #0a0e27; }
+        .btn-primary:hover { background: #00b4d8; }
+        .btn-secondary { background: #333; color: #ccc; }
+        .btn-secondary:hover { background: #444; }
+        .btn-success { background: #00c851; color: #000; }
+        .btn-copy { background: #9b59b6; color: #fff; }
+        .btn-copy:hover { background: #8e44ad; }
+        .form-group { margin: 12px 0; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 6px; font-size: 13px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; max-width: 400px; padding: 10px; border: 1px solid #333; border-radius: 6px; background: #16213e; color: #fff; font-size: 14px; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .status-msg { padding: 10px 16px; border-radius: 6px; margin: 10px 0; font-size: 13px; display: none; }
+        .status-msg.success { display: block; background: #00c85133; color: #00c851; border: 1px solid #00c851; }
+        .status-msg.error { display: block; background: #ff444433; color: #ff4444; border: 1px solid #ff4444; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .mini-btn { padding: 4px 8px; font-size: 11px; }
+        .dual-actions { display: flex; gap: 6px; }
+        .preset-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .paper-grid { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 24px; align-items: start; }
+        .panel { background: #16213e; padding: 20px; border-radius: 8px; }
+        .panel h4 { color: #00d2ff; margin-bottom: 16px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-card { background: #111b33; padding: 14px; border-radius: 8px; border: 1px solid #22355d; }
+        .summary-card .label { font-size: 11px; color: #7f8aa3; text-transform: uppercase; }
+        .summary-card .value { font-size: 22px; font-weight: bold; margin-top: 6px; }
+        .positive { color: #00c851; }
+        .negative { color: #ff6f61; }
+        .neutral { color: #ccc; }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .tabs { justify-content: center; }
+            .tab { padding: 10px 16px; font-size: 12px; }
+            .content { padding: 12px; }
+            table { font-size: 11px; }
+            th, td { padding: 6px 4px; }
+            .paper-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>&#x1F4C8; PSX Trading Bot</h1>
+            <div class="meta">
+                SBP Rate: <span id="sbpRate">11.5%</span> |
+                Last Updated: <span id="lastUpdate">--</span> |
+                Stocks: <span id="totalStocks">--</span> |
+                Universe: <span id="universeBadge" class="source-badge">--</span>
+            </div>
+        </div>
+        <div class="actions">
+            <div class="source-toggle">
+                <label for="universeSource">Source</label>
+                <select id="universeSource"></select>
+            </div>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="rankings">Rankings</div>
+        <div class="tab" data-tab="signals">Signals</div>
+        <div class="tab" data-tab="paper">Paper Trading</div>
+        <div class="tab" data-tab="prompts">AI Prompts</div>
+        <div class="tab" data-tab="sentiment">Input Scores</div>
+    </div>
+
+    <div class="content">
+        <!-- Rankings Tab -->
+        <div id="rankings" class="tab-content active">
+            <div class="stats-bar" id="statsBar"></div>
+            <div class="table-container">
+                <table id="rankingsTable">
+                    <thead><tr>
+                        <th class="sortable" data-sort-key="rank">#<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="symbol">Symbol<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="signal">Signal<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="current_price">Price<span class="sort-indicator"></span></th>
+                        <th class="sortable" data-sort-key="target_price">Target<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="stop_loss">Stop Loss<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="expected_return_pct">Exp Ret%<span class="sort-indicator"></span></th>
+                        <th class="sortable" data-sort-key="composite_score">Composite<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="math_score">Math<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="sentiment_score">Sent.<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="value_score">Value<span class="sort-indicator"></span></th>
+                        <th class="sortable" data-sort-key="zscore">Z-Score<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="rsi">RSI<span class="sort-indicator"></span></th><th class="sortable" data-sort-key="regime">Regime<span class="sort-indicator"></span></th><th>Actions</th>
+                    </tr></thead>
+                    <tbody id="rankingsBody">
+                        <tr><td colspan="15" class="loading">Loading rankings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="paper" class="tab-content">
+            <div class="summary-grid" id="paperSummary">
+                <div class="summary-card"><div class="label">Equity</div><div class="value">Loading...</div></div>
+            </div>
+            <div class="paper-grid">
+                <div class="panel">
+                    <h4>Simulate Trade</h4>
+                    <div class="form-group"><label>Action</label><select id="paperSide"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+                    <div class="form-group"><label>Stock Symbol</label><input type="text" id="paperSymbol" placeholder="e.g. APL"></div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="paperQuantity" min="1" value="100"></div>
+                    <div class="form-group"><label>Price Override (optional)</label><input type="number" id="paperPrice" min="0" step="0.01" placeholder="Uses live price if blank"></div>
+                    <div class="form-group"><label>Notes</label><textarea id="paperNotes" placeholder="Reason for simulated trade..."></textarea></div>
+                    <button class="btn btn-success" onclick="submitPaperTrade()">Execute Paper Trade</button>
+                    <button class="btn btn-secondary" onclick="resetPaperPortfolio()" style="margin-left:8px;">Reset Portfolio</button>
+                    <div class="status-msg" id="paperStatus"></div>
+                </div>
+                <div>
+                    <div class="panel" style="margin-bottom:24px;">
+                        <h4>Open Positions</h4>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>Symbol</th><th>Qty</th><th>Avg Cost</th><th>Current</th><th>Value</th><th>Unrealized</th></tr></thead>
+                                <tbody id="paperPositionsBody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h4>Trade History</h4>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Value</th><th>Realized P&L</th></tr></thead>
+                                <tbody id="paperTradesBody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:24px;">
+                        <h4>Closed Trade Analytics</h4>
+                        <div class="table-container">
+                            <table>
+                                <thead><tr><th>Symbol</th><th>Qty</th><th>Buy</th><th>Sell</th><th>Hold (hrs)</th><th>P&L</th><th>Return%</th></tr></thead>
+                                <tbody id="paperClosedTradesBody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signals Tab -->
+        <div id="signals" class="tab-content">
+            <h3 style="color:#00c851; margin-bottom:16px;">Buy Signals</h3>
+            <div class="table-container">
+                <table><thead><tr>
+                    <th>Symbol</th><th>Signal</th><th>Price</th><th>Target</th>
+                    <th>Stop Loss</th><th>Expected Return%</th><th>Score</th><th>Trade</th>
+                </tr></thead>
+                <tbody id="buySignalsBody"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody></table>
+            </div>
+            <h3 style="color:#ff4444; margin: 24px 0 16px;">Sell Signals</h3>
+            <div class="table-container">
+                <table><thead><tr>
+                    <th>Symbol</th><th>Signal</th><th>Price</th><th>Z-Score</th><th>Action</th><th>Trade</th>
+                </tr></thead>
+                <tbody id="sellSignalsBody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <!-- AI Prompts Tab -->
+        <div id="prompts" class="tab-content">
+            <h3 style="color:#9b59b6; margin-bottom:16px;">AI Prompt Generator</h3>
+            <p style="color:#888; margin-bottom:16px; font-size:13px;">
+                Generate prompts, copy them, and paste into ChatGPT or Claude for analysis.
+            </p>
+            <div class="prompt-controls">
+                <button class="btn btn-primary" onclick="loadPrompt('daily')">Daily Analysis</button>
+                <button class="btn btn-primary" onclick="loadPrompt('market_sentiment')">Market Sentiment</button>
+                <button class="btn btn-secondary" onclick="loadStockPrompt('sentiment')">Stock Sentiment</button>
+                <button class="btn btn-secondary" onclick="loadStockPrompt('validate')">Trade Validation</button>
+                <button class="btn btn-secondary" onclick="loadStockPrompt('value')">Company Value</button>
+            </div>
+            <div class="form-group" id="stockSymbolGroup" style="display:none;">
+                <label>Enter Stock Symbol:</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" id="promptSymbol" placeholder="e.g. MEBL" style="max-width:200px;">
+                    <button class="btn btn-primary" onclick="generateStockPrompt()">Generate</button>
+                </div>
+            </div>
+            <div id="promptResult" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0;">
+                    <span style="color:#9b59b6; font-weight:bold;" id="promptTypeLabel">Prompt</span>
+                    <button class="btn btn-copy" onclick="copyPrompt()">Copy to Clipboard</button>
+                </div>
+                <div class="prompt-box" id="promptText"></div>
+            </div>
+        </div>
+
+        <!-- Input Scores Tab -->
+        <div id="sentiment" class="tab-content">
+            <h3 style="color:#f39c12; margin-bottom:16px;">Input AI Analysis Scores</h3>
+            <p style="color:#888; margin-bottom:20px; font-size:13px;">
+                After getting analysis from ChatGPT/Claude, input the scores here to improve rankings.
+            </p>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:24px;">
+                <!-- Sentiment Score -->
+                <div style="background:#16213e; padding:20px; border-radius:8px;">
+                    <h4 style="color:#00d2ff; margin-bottom:16px;">Sentiment Score</h4>
+                    <div class="form-group"><label>Stock Symbol</label><input type="text" id="sentSymbol" placeholder="e.g. MEBL"></div>
+                    <div class="form-group"><label>Sentiment Score (-100 bearish to +100 bullish)</label><input type="number" id="sentScore" min="-100" max="100" placeholder="e.g. 45"></div>
+                    <div class="form-group"><label>Short-Term Outlook</label><select id="sentShort"><option value="bullish">Bullish</option><option value="neutral" selected>Neutral</option><option value="bearish">Bearish</option></select></div>
+                    <div class="form-group"><label>Medium-Term Outlook</label><select id="sentMedium"><option value="bullish">Bullish</option><option value="neutral" selected>Neutral</option><option value="bearish">Bearish</option></select></div>
+                    <div class="form-group"><label>Notes (optional)</label><textarea id="sentNotes" placeholder="Key insights from AI..."></textarea></div>
+                    <button class="btn btn-success" onclick="submitSentiment()">Submit Sentiment</button>
+                    <div class="status-msg" id="sentStatus"></div>
+                </div>
+                <!-- Value Score -->
+                <div style="background:#16213e; padding:20px; border-radius:8px;">
+                    <h4 style="color:#00d2ff; margin-bottom:16px;">Value Score Override</h4>
+                    <div class="form-group"><label>Stock Symbol</label><input type="text" id="valSymbol" placeholder="e.g. MEBL"></div>
+                    <div class="form-group"><label>Value Score (0-100)</label><input type="number" id="valScore" min="0" max="100" placeholder="e.g. 75"></div>
+                    <div class="form-group"><label>Notes (optional)</label><textarea id="valNotes" placeholder="Key reasons..."></textarea></div>
+                    <button class="btn btn-success" onclick="submitValue()">Submit Value Score</button>
+                    <div class="status-msg" id="valStatus"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = localStorage.getItem('token');
+        if (!TOKEN) window.location.href = '/';
+        let rankingsData = [];
+        let paperPortfolioData = null;
+        let rankingSort = { key: 'composite_score', direction: 'desc' };
+        const signalPriority = { BUY: 1, ACCUMULATE: 2, WATCH: 3, HOLD: 4, SELL: 5, TAKE_PROFIT: 6, OVERBOUGHT: 7, STOP_LOSS: 8, INSUFFICIENT_DATA: 9 };
+        const regimePriority = { UPTREND: 1, NEUTRAL: 2, DOWNTREND: 3, INSUFFICIENT_DATA: 4 };
+
+        const API = (path) => fetch(path, {
+            headers: { 'Authorization': `Bearer ${TOKEN}` }
+        }).then(async (r) => {
+            if (r.status === 401) { logout(); throw new Error('Unauthorized'); }
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.detail || 'Request failed');
+            return data;
+        });
+
+        const APIP = (path, body) => fetch(path, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        }).then(async (r) => {
+            const data = await r.json();
+            if (r.status === 401) { logout(); throw new Error('Unauthorized'); }
+            if (!r.ok) throw new Error(data.detail || 'Request failed');
+            return data;
+        });
+
+        function toDisplayNumber(value, digits = 1) {
+            return value === null || value === undefined || Number.isNaN(Number(value)) ? '-' : Number(value).toFixed(digits);
+        }
+
+        function setActiveTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function getSortValue(row, key) {
+            const value = row[key];
+            if (key === 'signal') return signalPriority[value] || 99;
+            if (key === 'regime') return regimePriority[value] || 99;
+            if (typeof value === 'number') return value;
+            if (value === null || value === undefined) return '';
+            const numericValue = Number(value);
+            return Number.isNaN(numericValue) ? String(value).toUpperCase() : numericValue;
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('th.sortable').forEach((th) => {
+                const indicator = th.querySelector('.sort-indicator');
+                indicator.textContent = th.dataset.sortKey === rankingSort.key ? (rankingSort.direction === 'asc' ? '▲' : '▼') : '';
+            });
+        }
+
+        function renderRankingsTable() {
+            const tbody = document.getElementById('rankingsBody');
+            if (rankingsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" class="loading">No data yet. Run analysis first.</td></tr>';
+                updateSortIndicators();
+                return;
+            }
+            const sorted = [...rankingsData].sort((left, right) => {
+                const a = getSortValue(left, rankingSort.key);
+                const b = getSortValue(right, rankingSort.key);
+                if (a < b) return rankingSort.direction === 'asc' ? -1 : 1;
+                if (a > b) return rankingSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            tbody.innerHTML = sorted.map(s => `
+                <tr>
+                    <td>${s.rank ?? '-'}</td>
+                    <td><strong>${s.symbol}</strong></td>
+                    <td><span class="signal signal-${s.signal}">${s.signal}</span></td>
+                    <td>${toDisplayNumber(s.current_price, 1)}</td>
+                    <td>${toDisplayNumber(s.target_price, 1)}</td>
+                    <td>${toDisplayNumber(s.stop_loss, 1)}</td>
+                    <td style="color:${(s.expected_return_pct || 0) > 0 ? '#00c851' : '#ff4444'}">${toDisplayNumber(s.expected_return_pct, 1)}${s.expected_return_pct !== null && s.expected_return_pct !== undefined ? '%' : ''}</td>
+                    <td><strong>${toDisplayNumber(s.composite_score, 1)}</strong></td>
+                    <td>${toDisplayNumber(s.math_score, 0)}</td>
+                    <td>${toDisplayNumber(s.sentiment_score, 0)}</td>
+                    <td>${toDisplayNumber(s.value_score, 0)}</td>
+                    <td style="color:${(s.zscore || 0) < -1 ? '#00c851' : (s.zscore || 0) > 1 ? '#ff4444' : '#ccc'}">${toDisplayNumber(s.zscore, 2)}</td>
+                    <td>${toDisplayNumber(s.rsi, 0)}</td>
+                    <td>${s.regime || '-'}</td>
+                    <td>
+                        <div class="dual-actions">
+                            <button class="btn btn-secondary mini-btn" onclick="loadStockPromptDirect('validate','${s.symbol}')">Validate</button>
+                            <button class="btn btn-success mini-btn" onclick="prefillPaperTrade('${s.symbol}','BUY', ${s.current_price ?? 'null'})">Paper Buy</button>
+                            <button class="btn btn-secondary mini-btn" onclick="prefillPaperTrade('${s.symbol}','SELL', ${s.current_price ?? 'null'})">Paper Sell</button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            updateSortIndicators();
+        }
+
+        function renderUniverse(universe) {
+            if (!universe) return;
+            document.getElementById('universeBadge').textContent = `${universe.display_name} (${universe.total_tickers})`;
+            const select = document.getElementById('universeSource');
+            if (!select.dataset.initialized) {
+                select.innerHTML = universe.sources.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+                select.dataset.initialized = 'true';
+            }
+            select.value = universe.selected_source;
+        }
+
+        function getHeldQuantity(symbol) {
+            if (!paperPortfolioData || !paperPortfolioData.positions) return 0;
+            const position = paperPortfolioData.positions.find((item) => item.symbol === symbol);
+            return position ? position.quantity : 0;
+        }
+
+        function presetButtons(symbol, side, price, presets) {
+            return `<div class="preset-actions">${presets.map((qty) => `<button class="btn ${side === 'BUY' ? 'btn-success' : 'btn-secondary'} mini-btn" onclick="quickPaperTrade('${symbol}','${side}',${qty},${price ?? 'null'})">${side === 'BUY' ? 'Buy' : 'Sell'} ${qty}</button>`).join('')}</div>`;
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        function logout() { localStorage.removeItem('token'); window.location.href = '/'; }
+
+        async function loadRankings() {
+            try {
+                const data = await API('/api/rankings');
+                document.getElementById('sbpRate').textContent = data.sbp_rate + '%';
+                document.getElementById('lastUpdate').textContent = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '--';
+                document.getElementById('totalStocks').textContent = data.total_stocks;
+                renderUniverse(data.universe);
+                const stats = data.rankings || [];
+                const buys = stats.filter(s => ['BUY', 'ACCUMULATE'].includes(s.signal)).length;
+                const watches = stats.filter(s => s.signal === 'WATCH').length;
+                const sells = stats.filter(s => ['SELL', 'TAKE_PROFIT', 'OVERBOUGHT', 'STOP_LOSS'].includes(s.signal)).length;
+                document.getElementById('statsBar').innerHTML = `
+                    <div class="stat-card"><div class="label">Total Stocks</div><div class="value">${stats.length}</div></div>
+                    <div class="stat-card" style="border-color:#00c851"><div class="label">Buy / Accumulate</div><div class="value" style="color:#00c851">${buys}</div></div>
+                    <div class="stat-card" style="border-color:#ffbb33"><div class="label">Watch</div><div class="value" style="color:#ffbb33">${watches}</div></div>
+                    <div class="stat-card" style="border-color:#ff6f61"><div class="label">Exit / Trim</div><div class="value" style="color:#ff6f61">${sells}</div></div>
+                    <div class="stat-card" style="border-color:#9b59b6"><div class="label">SBP Rate</div><div class="value" style="color:#9b59b6">${data.sbp_rate}%</div></div>`;
+                rankingsData = stats;
+                renderRankingsTable();
+            } catch (e) { console.error('Failed to load rankings:', e); }
+        }
+
+        async function loadSignals() {
+            try {
+                const data = await API('/api/signals');
+                const bb = document.getElementById('buySignalsBody');
+                const sb = document.getElementById('sellSignalsBody');
+                bb.innerHTML = data.buy_signals.length === 0 ? '<tr><td colspan="8" style="color:#888;">No buy signals.</td></tr>' :
+                    data.buy_signals.map(s => `<tr><td><strong>${s.symbol}</strong></td><td><span class="signal signal-${s.signal}">${s.signal}</span></td><td>${toDisplayNumber(s.current_price, 1)}</td><td>${toDisplayNumber(s.target_price, 1)}</td><td>${toDisplayNumber(s.stop_loss, 1)}</td><td style="color:#00c851">${toDisplayNumber(s.expected_return_pct, 1)}%</td><td>${toDisplayNumber(s.composite_score, 1)}</td><td>${presetButtons(s.symbol, 'BUY', s.current_price, [100, 500])}</td></tr>`).join('');
+                sb.innerHTML = data.sell_signals.length === 0 ? '<tr><td colspan="6" style="color:#888;">No sell signals.</td></tr>' :
+                    data.sell_signals.map(s => {
+                        const heldQty = getHeldQuantity(s.symbol);
+                        const presets = heldQty > 0 ? [Math.min(heldQty, 100), Math.min(heldQty, 500), heldQty] : [100, 500];
+                        const uniquePresets = [...new Set(presets.filter((qty) => qty > 0))];
+                        return `<tr><td><strong>${s.symbol}</strong></td><td><span class="signal signal-${s.signal}">${s.signal}</span></td><td>${toDisplayNumber(s.current_price, 1)}</td><td>${toDisplayNumber(s.zscore, 2)}</td><td>${s.action||'-'}</td><td>${presetButtons(s.symbol, 'SELL', s.current_price, uniquePresets)}</td></tr>`;
+                    }).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        let currentPromptType = '';
+        async function loadPrompt(type) {
+            document.getElementById('stockSymbolGroup').style.display = 'none';
+            document.getElementById('promptResult').style.display = 'block';
+            document.getElementById('promptText').textContent = 'Generating prompt...';
+            document.getElementById('promptTypeLabel').textContent = type.replace('_', ' ').toUpperCase();
+            try { const d = await API(`/api/prompts/${type}`); document.getElementById('promptText').textContent = d.prompt; }
+            catch (e) { document.getElementById('promptText').textContent = 'Error: ' + e; }
+        }
+        function loadStockPrompt(type) {
+            currentPromptType = type;
+            document.getElementById('stockSymbolGroup').style.display = 'block';
+            document.getElementById('promptResult').style.display = 'none';
+            document.getElementById('promptSymbol').focus();
+        }
+        async function loadStockPromptDirect(type, symbol) {
+            document.getElementById('stockSymbolGroup').style.display = 'none';
+            document.getElementById('promptResult').style.display = 'block';
+            document.getElementById('promptText').textContent = 'Generating...';
+            setActiveTab('prompts');
+            const m = {'sentiment':'sentiment','validate':'validate','value':'value'};
+            try { const d = await API(`/api/prompts/${m[type]}/${symbol}`); document.getElementById('promptTypeLabel').textContent = `${type.toUpperCase()} - ${symbol}`; document.getElementById('promptText').textContent = d.prompt; }
+            catch (e) { document.getElementById('promptText').textContent = 'Error: ' + e; }
+        }
+        async function generateStockPrompt() {
+            const sym = document.getElementById('promptSymbol').value.trim().toUpperCase();
+            if (!sym) return alert('Enter a stock symbol');
+            await loadStockPromptDirect(currentPromptType, sym);
+        }
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptText').textContent).then(() => {
+                const b = document.querySelector('.btn-copy'); b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy to Clipboard', 2000);
+            });
+        }
+
+        async function submitSentiment() {
+            const body = { symbol: document.getElementById('sentSymbol').value.trim(), score: parseFloat(document.getElementById('sentScore').value), outlook_short: document.getElementById('sentShort').value, outlook_medium: document.getElementById('sentMedium').value, notes: document.getElementById('sentNotes').value };
+            if (!body.symbol || isNaN(body.score)) return alert('Fill in symbol and score');
+            try { await APIP('/api/sentiment', body); const el = document.getElementById('sentStatus'); el.className = 'status-msg success'; el.textContent = `Sentiment for ${body.symbol} saved: ${body.score}`; }
+            catch (e) { const el = document.getElementById('sentStatus'); el.className = 'status-msg error'; el.textContent = 'Error: ' + e; }
+        }
+        async function submitValue() {
+            const body = { symbol: document.getElementById('valSymbol').value.trim(), score: parseFloat(document.getElementById('valScore').value), notes: document.getElementById('valNotes').value };
+            if (!body.symbol || isNaN(body.score)) return alert('Fill in symbol and score');
+            try { await APIP('/api/value-override', body); const el = document.getElementById('valStatus'); el.className = 'status-msg success'; el.textContent = `Value for ${body.symbol} saved: ${body.score}/100`; }
+            catch (e) { const el = document.getElementById('valStatus'); el.className = 'status-msg error'; el.textContent = 'Error: ' + e; }
+        }
+
+        function renderPaperPortfolio(data) {
+            paperPortfolioData = data;
+            const pnlClass = (value) => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
+            const analytics = data.analytics || {};
+            document.getElementById('paperSummary').innerHTML = `
+                <div class="summary-card"><div class="label">Starting Cash</div><div class="value neutral">Rs ${toDisplayNumber(data.starting_cash, 0)}</div></div>
+                <div class="summary-card"><div class="label">Cash</div><div class="value neutral">Rs ${toDisplayNumber(data.cash, 0)}</div></div>
+                <div class="summary-card"><div class="label">Market Value</div><div class="value neutral">Rs ${toDisplayNumber(data.market_value, 0)}</div></div>
+                <div class="summary-card"><div class="label">Equity</div><div class="value neutral">Rs ${toDisplayNumber(data.equity, 0)}</div></div>
+                <div class="summary-card"><div class="label">Realized P&L</div><div class="value ${pnlClass(data.realized_pnl)}">Rs ${toDisplayNumber(data.realized_pnl, 0)}</div></div>
+                <div class="summary-card"><div class="label">Total Return</div><div class="value ${pnlClass(data.total_pnl)}">${toDisplayNumber(data.total_return_pct, 2)}%</div></div>
+                <div class="summary-card"><div class="label">Win Rate</div><div class="value ${pnlClass(analytics.win_rate_pct || 0)}">${toDisplayNumber(analytics.win_rate_pct, 2)}%</div></div>
+                <div class="summary-card"><div class="label">Avg Hold Time</div><div class="value neutral">${toDisplayNumber(analytics.average_hold_hours, 2)}h</div></div>
+                <div class="summary-card"><div class="label">Closed Trade P&L</div><div class="value ${pnlClass(analytics.closed_trade_pnl || 0)}">Rs ${toDisplayNumber(analytics.closed_trade_pnl, 0)}</div></div>
+                <div class="summary-card"><div class="label">Avg Closed P&L</div><div class="value ${pnlClass(analytics.average_closed_pnl || 0)}">Rs ${toDisplayNumber(analytics.average_closed_pnl, 0)}</div></div>`;
+
+            const positionsBody = document.getElementById('paperPositionsBody');
+            positionsBody.innerHTML = data.positions.length === 0 ? '<tr><td colspan="6" style="color:#888;">No open positions.</td></tr>' :
+                data.positions.map(p => `<tr><td><strong>${p.symbol}</strong></td><td>${p.quantity}</td><td>${toDisplayNumber(p.avg_cost, 2)}</td><td>${toDisplayNumber(p.current_price, 2)}</td><td>${toDisplayNumber(p.market_value, 0)}</td><td class="${p.unrealized_pnl > 0 ? 'positive' : p.unrealized_pnl < 0 ? 'negative' : 'neutral'}">${toDisplayNumber(p.unrealized_pnl, 0)} (${toDisplayNumber(p.unrealized_pct, 2)}%)</td></tr>`).join('');
+
+            const tradesBody = document.getElementById('paperTradesBody');
+            tradesBody.innerHTML = data.trades.length === 0 ? '<tr><td colspan="7" style="color:#888;">No paper trades yet.</td></tr>' :
+                data.trades.map(t => `<tr><td>${new Date(t.timestamp).toLocaleString()}</td><td><strong>${t.symbol}</strong></td><td><span class="signal signal-${t.side}">${t.side}</span></td><td>${t.quantity}</td><td>${toDisplayNumber(t.price, 2)}</td><td>${toDisplayNumber(t.trade_value, 0)}</td><td class="${t.realized_pnl > 0 ? 'positive' : t.realized_pnl < 0 ? 'negative' : 'neutral'}">${toDisplayNumber(t.realized_pnl, 0)}</td></tr>`).join('');
+
+            const closedTradesBody = document.getElementById('paperClosedTradesBody');
+            closedTradesBody.innerHTML = data.closed_trades.length === 0 ? '<tr><td colspan="7" style="color:#888;">No closed trades yet.</td></tr>' :
+                data.closed_trades.map(t => `<tr><td><strong>${t.symbol}</strong></td><td>${t.quantity}</td><td>${toDisplayNumber(t.buy_price, 2)}</td><td>${toDisplayNumber(t.sell_price, 2)}</td><td>${toDisplayNumber(t.holding_hours, 2)}</td><td class="${t.realized_pnl > 0 ? 'positive' : t.realized_pnl < 0 ? 'negative' : 'neutral'}">${toDisplayNumber(t.realized_pnl, 0)}</td><td class="${t.realized_pct > 0 ? 'positive' : t.realized_pct < 0 ? 'negative' : 'neutral'}">${toDisplayNumber(t.realized_pct, 2)}%</td></tr>`).join('');
+        }
+
+        async function loadPaperPortfolio() {
+            try {
+                const data = await API('/api/paper-portfolio');
+                renderPaperPortfolio(data);
+            } catch (e) {
+                console.error('Failed to load paper portfolio:', e);
+            }
+        }
+
+        function prefillPaperTrade(symbol, side, price) {
+            document.getElementById('paperSymbol').value = symbol;
+            document.getElementById('paperSide').value = side;
+            document.getElementById('paperPrice').value = price && !Number.isNaN(Number(price)) ? Number(price).toFixed(2) : '';
+            setActiveTab('paper');
+        }
+
+        async function submitPaperTrade() {
+            const body = {
+                symbol: document.getElementById('paperSymbol').value.trim(),
+                side: document.getElementById('paperSide').value,
+                quantity: parseInt(document.getElementById('paperQuantity').value, 10),
+                price: document.getElementById('paperPrice').value ? parseFloat(document.getElementById('paperPrice').value) : null,
+                notes: document.getElementById('paperNotes').value.trim(),
+            };
+            if (!body.symbol || !body.quantity || body.quantity <= 0) return alert('Enter a symbol and quantity');
+            try {
+                const result = await APIP('/api/paper-trades', body);
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg success';
+                el.textContent = `${result.trade.side} ${result.trade.quantity} ${result.trade.symbol} @ ${toDisplayNumber(result.trade.price, 2)} executed.`;
+                renderPaperPortfolio(result.portfolio);
+                await loadSignals();
+            } catch (e) {
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg error';
+                el.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function quickPaperTrade(symbol, side, quantity, price) {
+            try {
+                const result = await APIP('/api/paper-trades', {
+                    symbol,
+                    side,
+                    quantity,
+                    price,
+                    notes: `Quick ${side.toLowerCase()} from signals`,
+                });
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg success';
+                el.textContent = `${result.trade.side} ${result.trade.quantity} ${result.trade.symbol} @ ${toDisplayNumber(result.trade.price, 2)} executed from signal table.`;
+                renderPaperPortfolio(result.portfolio);
+                await loadSignals();
+            } catch (e) {
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg error';
+                el.textContent = 'Error: ' + e.message;
+                setActiveTab('paper');
+            }
+        }
+
+        async function resetPaperPortfolio() {
+            const startingCash = window.prompt('Reset starting cash (default 1000000):', '1000000');
+            if (startingCash === null) return;
+            try {
+                const data = await APIP('/api/paper-reset', { starting_cash: startingCash ? parseFloat(startingCash) : null });
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg success';
+                el.textContent = 'Paper portfolio reset.';
+                renderPaperPortfolio(data);
+                await loadSignals();
+            } catch (e) {
+                const el = document.getElementById('paperStatus');
+                el.className = 'status-msg error';
+                el.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        document.getElementById('universeSource').addEventListener('change', async (e) => {
+            const select = e.target;
+            select.disabled = true;
+            try {
+                const universe = await APIP('/api/universe', { source: select.value });
+                renderUniverse(universe);
+                await loadRankings();
+                await loadSignals();
+            } catch (err) {
+                console.error('Failed to switch universe:', err);
+                alert('Failed to switch source');
+            } finally {
+                select.disabled = false;
+            }
+        });
+
+        document.querySelectorAll('th.sortable').forEach((th) => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sortKey;
+                if (rankingSort.key === key) {
+                    rankingSort.direction = rankingSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    rankingSort = { key, direction: ['symbol', 'signal', 'regime'].includes(key) ? 'asc' : 'desc' };
+                }
+                renderRankingsTable();
+            });
+        });
+
+        loadRankings(); loadSignals(); loadPaperPortfolio();
+        setInterval(() => { loadRankings(); loadSignals(); loadPaperPortfolio(); }, 3600000);  // Auto-refresh every 1 hour
+    </script>
+</body>
+</html>
